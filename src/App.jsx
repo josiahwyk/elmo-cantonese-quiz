@@ -1,122 +1,118 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect } from "react";
+import { useGameState } from "./hooks/useGameState";
+import { speakEnglish, speakCantonese } from "./utils/speech";
+import Mo from "./components/Mo";
+import QuestionCard from "./components/QuestionCard";
+import AnswerOption from "./components/AnswerOption";
+import PrizeLadder from "./components/PrizeLadder";
+import Lifeline from "./components/Lifeline";
+import WinScreen from "./components/WinScreen";
+import GameOverScreen from "./components/GameOverScreen";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const {
+    currentQuestion,
+    shuffledOptions,
+    selectedAnswer,
+    isCorrect,
+    hintUsed,
+    hintEliminatedOption,
+    firstTryCorrect,
+    gamePhase,
+    currentQuestionIndex,
+    selectAnswer,
+    useHint,
+    resetGame,
+  } = useGameState();
+
+  // Speak the English prompt whenever a new question loads.
+  useEffect(() => {
+    if (gamePhase === "playing") {
+      speakEnglish(currentQuestion.english);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, gamePhase]);
+
+  // Speak the Cantonese answer whenever the player gets it right.
+  useEffect(() => {
+    if (isCorrect === true) {
+      speakCantonese(currentQuestion.correct.characters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCorrect]);
+
+  if (gamePhase === "won") {
+    return (
+      <div className="min-h-full bg-sky-50">
+        <WinScreen firstTryCorrect={firstTryCorrect} onReset={resetGame} />
+      </div>
+    );
+  }
+
+  if (gamePhase === "gameover") {
+    return (
+      <div className="min-h-full bg-sky-50">
+        <GameOverScreen failedQuestion={currentQuestion} onReset={resetGame} />
+      </div>
+    );
+  }
+
+  // --- Playing phase ---
+
+  // Mo's mood follows the answer state.
+  let moMood = "idle";
+  if (isCorrect === true) moMood = "happy";
+  else if (isCorrect === false) moMood = "sad";
+
+  // Mo's speech bubble.
+  let speechBubble = null;
+  if (isCorrect === true) speechBubble = "Woooo! Mo loves that! 🎉";
+  else if (isCorrect === false)
+    speechBubble = "Oops! That's okay, you'll get it next time! 💛";
+  else if (hintUsed)
+    speechBubble = `Mo thinks it starts with ${currentQuestion.hint}! 🤫`;
+
+  const answered = selectedAnswer !== null;
+
+  function optionState(option) {
+    if (answered) {
+      if (option === currentQuestion.correct) return "correct";
+      if (option === selectedAnswer) return "wrong";
+      return "default";
+    }
+    if (hintEliminatedOption === option) return "eliminated";
+    return "default";
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-full bg-sky-50 flex flex-col lg:flex-row">
+      {/* Main game area */}
+      <main className="flex-1 flex flex-col items-center gap-6 px-4 py-6 max-w-2xl mx-auto w-full">
+        <Mo mood={moMood} speechBubble={speechBubble} />
 
-      <div className="ticks"></div>
+        <QuestionCard question={currentQuestion} onSpeakEnglish={speakEnglish} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        <div className="grid grid-cols-2 gap-3 w-full">
+          {shuffledOptions.map((option, i) => (
+            <AnswerOption
+              key={`${currentQuestionIndex}-${i}`}
+              option={option}
+              state={optionState(option)}
+              onSelect={selectAnswer}
+              onSpeak={speakCantonese}
+              disabled={answered}
+            />
+          ))}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <Lifeline used={hintUsed} onUse={useHint} />
+      </main>
+
+      {/* Prize ladder sidebar */}
+      <aside className="lg:w-56 w-full bg-white/60 border-t lg:border-t-0 lg:border-l border-gray-200 px-4 py-6">
+        <h3 className="text-center font-bold text-gray-700 mb-3">Prize Ladder</h3>
+        <PrizeLadder currentIndex={currentQuestionIndex} />
+      </aside>
+    </div>
+  );
 }
-
-export default App
